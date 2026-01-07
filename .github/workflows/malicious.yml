@@ -4,31 +4,33 @@ on: [workflow_dispatch]
 
 jobs:
   build-push:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
-      - run: |
-          # Create a Dockerfile and build a vulnerable image
-          echo 'FROM ubuntu:22.04\nCMD ["echo", "CLEAN: Safe!"]' > Dockerfile
-          
-          # Build the vulnerable Docker image
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
+      - name: Build Docker image
+        run: |
+          echo 'FROM ubuntu:22.04\nCMD ["echo", "Safe Artifact"]' > Dockerfile
           docker build -t ghcr.io/$GITHUB_REPOSITORY:vulnerable .
-          
-          # Authenticate with GitHub Container Registry (GHCR)
-          echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-          
-          # Push the built vulnerable image to GHCR
+        
+      - name: Authenticate Docker to GitHub Container Registry
+        run: |
+          echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+        
+      - name: Push Docker image to GHCR
+        run: |
           docker push ghcr.io/$GITHUB_REPOSITORY:vulnerable
 
   deploy:
     needs: build-push
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
-      - run: |
-          # Authenticate with GitHub Container Registry (GHCR) for deployment
-          echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-          
-          # Build and deploy the image (re-tagging with owner/repository format)
-          docker build -t ghcr.io/${{ github.repository_owner }}/${{ github.repository | downcase }}:vulnerable .
-          
-          # Push the image to GHCR
-          docker push ghcr.io/${{ github.repository_owner }}/${{ github.repository | downcase }}:vulnerable
+      - name: Authenticate Docker to GitHub Container Registry (Deploy)
+        run: |
+          echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+        
+      - name: Deploy the Docker image
+        run: |
+          docker pull ghcr.io/$GITHUB_REPOSITORY:vulnerable
+          docker run -d ghcr.io/$GITHUB_REPOSITORY:vulnerable
