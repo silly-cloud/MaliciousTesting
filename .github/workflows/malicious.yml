@@ -7,9 +7,16 @@ jobs:
     runs-on: self-hosted
     steps:
       - run: |
+          # Create a Dockerfile and build a vulnerable image
           echo 'FROM ubuntu:22.04\nCMD ["echo", "CLEAN: Safe!"]' > Dockerfile
+          
+          # Build the vulnerable Docker image
           docker build -t ghcr.io/$GITHUB_REPOSITORY:vulnerable .
+          
+          # Authenticate with GitHub Container Registry (GHCR)
           echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+          
+          # Push the built vulnerable image to GHCR
           docker push ghcr.io/$GITHUB_REPOSITORY:vulnerable
 
   deploy:
@@ -17,5 +24,11 @@ jobs:
     runs-on: self-hosted
     steps:
       - run: |
+          # Authenticate with GitHub Container Registry (GHCR) for deployment
+          echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+          
+          # Build and deploy the image (re-tagging with owner/repository format)
           docker build -t ghcr.io/${{ github.repository_owner }}/${{ github.repository | downcase }}:vulnerable .
+          
+          # Push the image to GHCR
           docker push ghcr.io/${{ github.repository_owner }}/${{ github.repository | downcase }}:vulnerable
