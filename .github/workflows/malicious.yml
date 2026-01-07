@@ -9,28 +9,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         
+      - name: Create Dockerfile
+        run: |
+          # Create a basic Dockerfile with a simple "Safe Artifact" message
+          echo -e 'FROM ubuntu:22.04\nCMD ["echo", "Safe Artifact"]' > Dockerfile
+        
       - name: Build Docker image
         run: |
-          echo 'FROM ubuntu:22.04\nCMD ["echo", "Safe Artifact"]' > Dockerfile
-          docker build -t ghcr.io/malicioustesting:vulnerable .
-        
-      - name: Authenticate Docker to GitHub Container Registry
+          # Build the Docker image with the "vulnerable" tag
+          docker build -t ghcr.io/malicioustesting/malicioustesting:vulnerable .
+
+      - name: Authenticate Docker to GHCR
         run: |
+          # Login to GitHub Container Registry using GitHub PAT
           echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        
+
       - name: Push Docker image to GHCR
         run: |
-          docker push ghcr.io/malicioustesting:vulnerable
+          # Push the image to GHCR with the "vulnerable" tag
+          docker push ghcr.io/malicioustesting/malicioustesting:vulnerable
 
   deploy:
     needs: build-push
     runs-on: ubuntu-latest
     steps:
-      - name: Authenticate Docker to GitHub Container Registry (Deploy)
+      - name: Authenticate Docker to GHCR (Deploy)
         run: |
+          # Authenticate Docker again to pull the image for deployment
           echo ${{ secrets.GHCR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        
-      - name: Deploy the Docker image
+
+      - name: Pull and deploy the Docker image
         run: |
-          docker pull ghcr.io/malicioustesting:vulnerable
-          docker run -d ghcr.io/malicioustesting:vulnerable
+          # Pull and run the Docker image using the "vulnerable" tag
+          docker pull ghcr.io/malicioustesting/malicioustesting:vulnerable
+          docker run -d ghcr.io/malicioustesting/malicioustesting:vulnerable
